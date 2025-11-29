@@ -2,7 +2,7 @@
 FastAPI application for PDF generation
 """
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime
 import os
@@ -84,57 +84,6 @@ async def generate_pdf_endpoint(request: PDFRequest):
     - expiry_date: First expiry date in YYYY-MM-DD format
     
     Returns:
-    - PDF file download
-    """
-    
-    # Check if template exists
-    if not validate_template_exists(TEMPLATE_PDF_PATH):
-        raise HTTPException(
-            status_code=500, 
-            detail=f"Template PDF '{TEMPLATE_PDF_PATH}' not found"
-        )
-    
-    try:
-        # Generate PDF
-        pdf_path = pdf_generator.generate(
-            challan_no=request.challan_no,
-            student_name=request.student_name,
-            roll_number=request.roll_number,
-            class_name=request.class_name,
-            expiry_date_str=request.expiry_date
-        )
-        
-        # Return PDF file
-        return FileResponse(
-            path=pdf_path,
-            media_type="application/pdf",
-            filename=f"challan_{request.challan_no}.pdf",
-            headers={
-                "Content-Disposition": f"attachment; filename=challan_{request.challan_no}.pdf"
-            }
-        )
-        
-    except FileNotFoundError as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error generating PDF: {str(e)}")
-
-
-@app.post("/generate-pdf")
-async def generate_pdf_endpoint(request: PDFRequest):
-    """
-    Generate a student challan PDF
-    
-    Parameters:
-    - challan_no: Challan number (string)
-    - student_name: Student's full name
-    - roll_number: Student's roll number
-    - class_name: Class/Section name
-    - expiry_date: First expiry date in YYYY-MM-DD format
-    
-    Returns:
     - PDF file download (always named output.pdf)
     """
     
@@ -146,8 +95,8 @@ async def generate_pdf_endpoint(request: PDFRequest):
         )
     
     try:
-        # Generate PDF
-        pdf_path = pdf_generator.generate(
+        # Generate PDF (returns bytes)
+        pdf_bytes = pdf_generator.generate(
             challan_no=request.challan_no,
             student_name=request.student_name,
             roll_number=request.roll_number,
@@ -155,11 +104,10 @@ async def generate_pdf_endpoint(request: PDFRequest):
             expiry_date_str=request.expiry_date
         )
         
-        # Return PDF file with fixed name
-        return FileResponse(
-            path=pdf_path,
+        # Return PDF directly from memory
+        return Response(
+            content=pdf_bytes,
             media_type="application/pdf",
-            filename="output.pdf",  # Fixed filename
             headers={
                 "Content-Disposition": "attachment; filename=output.pdf"
             }
@@ -186,7 +134,8 @@ async def generate_sample_pdf():
         )
     
     try:
-        pdf_path = pdf_generator.generate(
+        # Generate PDF (returns bytes)
+        pdf_bytes = pdf_generator.generate(
             challan_no="22",
             student_name="Adeel Ahmed",
             roll_number="232201010",
@@ -194,14 +143,18 @@ async def generate_sample_pdf():
             expiry_date_str="2025-05-20"
         )
         
-        return FileResponse(
-            path=pdf_path,
+        # Return PDF directly from memory
+        return Response(
+            content=pdf_bytes,
             media_type="application/pdf",
-            filename="output.pdf"  # Fixed filename
+            headers={
+                "Content-Disposition": "attachment; filename=output.pdf"
+            }
         )
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating sample PDF: {str(e)}")
+
 
 @app.on_event("startup")
 async def startup_event():
