@@ -16,7 +16,7 @@ from config import (
     FIRST_LATE_FEE_DAYS,
     SECOND_LATE_FEE_DAYS
 )
-from utils import calculate_late_fee_dates, generate_unique_filename, format_date
+from utils import calculate_late_fee_dates, format_date
 
 
 class PDFGenerator:
@@ -96,9 +96,9 @@ class PDFGenerator:
             self._draw_text(canvas_obj, date3, x, coords["row3_y"], size)
     
     def generate(self, challan_no: str, student_name: str, roll_number: str, 
-                 class_name: str, expiry_date_str: str) -> str:
+                 class_name: str, expiry_date_str: str) -> bytes:
         """
-        Generate PDF with student details
+        Generate PDF with student details and return as bytes
         
         Args:
             challan_no: Challan number
@@ -108,7 +108,7 @@ class PDFGenerator:
             expiry_date_str: First expiry date (YYYY-MM-DD)
             
         Returns:
-            Path to generated PDF file
+            PDF file as bytes (in-memory)
             
         Raises:
             FileNotFoundError: If template PDF doesn't exist
@@ -165,9 +165,9 @@ class PDFGenerator:
         merged_page.merge_page(overlay_page)
         writer.add_page(merged_page)
         
-        # Save to file
-        output_path = generate_unique_filename(challan_no)
-        with open(output_path, "wb") as f:
-            writer.write(f)
+        # Return PDF as bytes (in-memory)
+        output = io.BytesIO()
+        writer.write(output)
+        output.seek(0)
         
-        return output_path
+        return output.read()
